@@ -6,7 +6,7 @@ export async function createClient() {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   if (!supabaseUrl || !supabaseKey || supabaseUrl.includes("your_supabase")) {
-    throw new Error("Supabase not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local");
+    console.warn("Supabase server credentials missing.");
   }
 
   const cookieStore = await cookies();
