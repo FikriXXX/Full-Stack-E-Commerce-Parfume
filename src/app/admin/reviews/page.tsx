@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Star } from "lucide-react";
 import { DeleteReviewButton } from "./delete-review-button";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminReviewsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let reviews: any[] = [];
