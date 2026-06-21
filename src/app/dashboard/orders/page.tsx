@@ -152,6 +152,13 @@ export default function OrdersPage() {
                   <span>Total</span>
                   <span>{formatPrice(selected.total_amount)}</span>
                 </div>
+                <Button
+                  variant="outline"
+                  className="mt-4 w-full bg-secondary/50 hover:bg-secondary border-border text-foreground text-xs font-medium cursor-pointer"
+                  onClick={() => window.open(`/invoice/${selected.id}?print=true`, "_blank")}
+                >
+                  Unduh Invoice (PDF)
+                </Button>
               </div>
 
               <Separator />

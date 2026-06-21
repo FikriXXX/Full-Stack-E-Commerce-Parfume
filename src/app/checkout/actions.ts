@@ -11,6 +11,7 @@ export type CheckoutInput = {
   shipping_province: string;
   shipping_postal_code: string;
   notes?: string;
+  shipping_cost?: number;
 };
 
 export async function placeOrder(input: CheckoutInput) {
@@ -50,13 +51,14 @@ export async function placeOrder(input: CheckoutInput) {
   }
 
   // 4. Calculate total_amount SERVER-SIDE (prevents price tampering)
+  const shippingCost = input.shipping_cost || 0;
   const serverTotal = cartItems.reduce((sum, item) => {
     const price =
       item.product.discount_percent > 0
         ? item.product.price * (1 - item.product.discount_percent / 100)
         : item.product.price;
     return sum + price * item.quantity;
-  }, 0);
+  }, 0) + shippingCost;
 
   // 5. Create the order with server-calculated total
   const { data: order, error: orderError } = await supabase
