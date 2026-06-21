@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { Search, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { Order, OrderStatus } from "@/lib/types";
+import { updateOrderStatus, updateShipment, deleteOrder } from "./actions";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
@@ -23,6 +24,7 @@ export default function AdminOrdersPage() {
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState<Order | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const fetchOrders = async () => {
     const supabase = createClient();
@@ -57,64 +59,51 @@ export default function AdminOrdersPage() {
     };
   }, [statusFilter]);
 
-  const deleteOrder = async (orderId: string) => {
+  const handleDelete = (orderId: string) => {
     if (!confirm("Hapus pesanan ini? Detail produk dan resi terkait juga akan terhapus.")) return;
 
-    const supabase = createClient();
-    const { error: shipmentError } = await supabase.from("shipments").delete().eq("order_id", orderId);
-
-    if (shipmentError) {
-      toast.error("Gagal menghapus resi: " + shipmentError.message);
-      return;
-    }
-
-    const { error: itemsError } = await supabase.from("order_items").delete().eq("order_id", orderId);
-
-    if (itemsError) {
-      toast.error("Gagal menghapus item pesanan: " + itemsError.message);
-      return;
-    }
-
-    const { error: orderError } = await supabase.from("orders").delete().eq("id", orderId);
-
-    if (orderError) {
-      toast.error("Gagal menghapus pesanan: " + orderError.message);
-      return;
-    }
-
-    toast.success("Pesanan berhasil dihapus");
-    setOrders((prev) => prev.filter((order) => order.id !== orderId));
-    if (selected?.id === orderId) setSelected(null);
+    startTransition(async () => {
+      const result = await deleteOrder(orderId);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Pesanan berhasil dihapus");
+        fetchOrders();
+        if (selected?.id === orderId) setSelected(null);
+      }
+    });
   };
 
-  const updateStatus = async (orderId: string, status: OrderStatus) => {
-    const supabase = createClient();
-    const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
-    if (error) {
-      toast.error("Gagal update status: " + error.message);
-      return;
-    }
-    toast.success(`Status diubah ke ${status}`);
-    fetchOrders();
-    if (selected?.id === orderId) setSelected({ ...selected, status });
+  const handleUpdateStatus = (orderId: string, status: OrderStatus) => {
+    startTransition(async () => {
+      const result = await updateOrderStatus(orderId, status);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success(`Status diubah ke ${status}`);
+        fetchOrders();
+        if (selected?.id === orderId) setSelected({ ...selected, status });
+      }
+    });
   };
 
-  const updateShipment = async (e: React.FormEvent<HTMLFormElement>, orderId: string) => {
+  const handleUpdateShipment = (e: React.FormEvent<HTMLFormElement>, orderId: string) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const supabase = createClient();
+    const courier = formData.get("courier") as string;
+    const trackingNumber = formData.get("tracking_number") as string;
 
-    await supabase.from("shipments").upsert({
-      order_id: orderId,
-      courier: formData.get("courier") as string,
-      tracking_number: formData.get("tracking_number") as string,
-      shipped_at: new Date().toISOString(),
-    }, { onConflict: "order_id" });
-
-    await supabase.from("orders").update({ status: "shipped" }).eq("id", orderId);
-    toast.success("Resi berhasil diinput");
-    fetchOrders();
-    setSelected(null);
+    startTransition(async () => {
+      const result = await updateShipment(orderId, courier, trackingNumber);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        await updateOrderStatus(orderId, "shipped");
+        toast.success("Resi berhasil diinput");
+        fetchOrders();
+        setSelected(null);
+      }
+    });
   };
 
   const filteredOrders = filter
@@ -162,8 +151,9 @@ export default function AdminOrdersPage() {
                   variant="ghost"
                   size="icon-sm"
                   className="text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteOrder(order.id)}
+                  onClick={() => handleDelete(order.id)}
                   aria-label="Hapus pesanan"
+                  disabled={isPending}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -219,7 +209,8 @@ export default function AdminOrdersPage() {
                       key={s}
                       size="sm"
                       variant={selected.status === s ? "default" : "outline"}
-                      onClick={() => updateStatus(selected.id, s)}
+                      onClick={() => handleUpdateStatus(selected.id, s)}
+                      disabled={isPending}
                     >
                       {s}
                     </Button>
@@ -228,14 +219,14 @@ export default function AdminOrdersPage() {
               </div>
 
               {/* Input Resi */}
-              <form onSubmit={(e) => updateShipment(e, selected.id)} className="space-y-2">
+              <form onSubmit={(e) => handleUpdateShipment(e, selected.id)} className="space-y-2">
                 <Label>Input Resi</Label>
                 <div className="flex gap-2">
-                  <Input name="courier" placeholder="Kurir (JNE, J&T, dll)" required defaultValue={selected.shipment?.courier || ""} />
-                  <Input name="tracking_number" placeholder="No. Resi" required defaultValue={selected.shipment?.tracking_number || ""} />
+                  <Input name="courier" placeholder="Kurir (JNE, J&T, dll)" required defaultValue={selected.shipment?.courier || ""} disabled={isPending} />
+                  <Input name="tracking_number" placeholder="No. Resi" required defaultValue={selected.shipment?.tracking_number || ""} disabled={isPending} />
                 </div>
-                <Button type="submit" size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                  Simpan Resi
+                <Button type="submit" size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={isPending}>
+                  {isPending ? "Menyimpan..." : "Simpan Resi"}
                 </Button>
               </form>
 
@@ -243,7 +234,8 @@ export default function AdminOrdersPage() {
                 <Button
                   variant="destructive"
                   className="w-full"
-                  onClick={() => deleteOrder(selected.id)}
+                  onClick={() => handleDelete(selected.id)}
+                  disabled={isPending}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Hapus Pesanan

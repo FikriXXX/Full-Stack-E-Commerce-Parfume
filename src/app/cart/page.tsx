@@ -55,14 +55,20 @@ export default function CartPage() {
 
   const updateQty = async (id: string, qty: number) => {
     const supabase = createClient();
-    if (qty < 1) return;
-    await supabase.from("carts").update({ quantity: qty }).eq("id", id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (qty < 1 || !user) return;
+    
+    await supabase.from("carts").update({ quantity: qty }).eq("id", id).eq("user_id", user.id);
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: qty } : i)));
   };
 
   const removeItem = async (id: string) => {
     const supabase = createClient();
-    await supabase.from("carts").delete().eq("id", id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    // Secure delete: Ensure we only delete items belonging to the authenticated user
+    await supabase.from("carts").delete().eq("id", id).eq("user_id", user.id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     toast.success("Item dihapus dari keranjang");
   };

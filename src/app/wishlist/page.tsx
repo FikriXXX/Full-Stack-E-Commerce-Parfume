@@ -31,7 +31,10 @@ export default function WishlistPage() {
 
   const removeItem = async (id: string) => {
     const supabase = createClient();
-    await supabase.from("wishlist").delete().eq("id", id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from("wishlist").delete().eq("id", id).eq("user_id", user.id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     toast.success("Dihapus dari wishlist");
   };

@@ -6,8 +6,24 @@ import { revalidatePath } from "next/cache";
 export async function deleteReview(reviewId: string) {
   try {
     const supabase = await createClient();
-    
-    // Auth check is handled by Supabase RLS (only admins can delete)
+
+    // 1. Defense-in-depth: Verify user is admin manually before relying on RLS
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Tidak terautentikasi" };
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin") {
+      return { error: "Akses ditolak: Hanya admin yang dapat menghapus ulasan." };
+    }
+
+    // 2. Perform the deletion
     const { error, data } = await supabase
       .from("reviews")
       .delete()
@@ -20,15 +36,16 @@ export async function deleteReview(reviewId: string) {
     }
 
     if (!data || data.length === 0) {
-      return { error: "Gagal menghapus ulasan. Pastikan Anda memiliki akses Admin." };
+      return {
+        error: "Gagal menghapus ulasan. Ulasan tidak ditemukan.",
+      };
     }
 
-    // Revalidate the admin reviews page and the specific product page if we knew the slug, 
-    // but we'll revalidate the whole products path to be safe.
     revalidatePath("/admin/reviews");
     revalidatePath("/products/[slug]", "page");
     return { success: true };
   } catch (error) {
+    console.error("Unexpected error deleting review:", error);
     return { error: "Terjadi kesalahan sistem." };
   }
 }
