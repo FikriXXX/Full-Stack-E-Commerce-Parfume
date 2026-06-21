@@ -12,6 +12,7 @@ import { ArrowRight, Minus, Plus, ShieldCheck, ShoppingBag, Trash2 } from "lucid
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { CartItem } from "@/lib/types";
+import { useCart } from "@/components/cart-context";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -23,6 +24,7 @@ function formatPrice(price: number) {
 
 export default function CartPage() {
   const router = useRouter();
+  const { refreshCart } = useCart();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +62,7 @@ export default function CartPage() {
     
     await supabase.from("carts").update({ quantity: qty }).eq("id", id).eq("user_id", user.id);
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, quantity: qty } : i)));
+    refreshCart();
   };
 
   const removeItem = async (id: string) => {
@@ -71,6 +74,7 @@ export default function CartPage() {
     await supabase.from("carts").delete().eq("id", id).eq("user_id", user.id);
     setItems((prev) => prev.filter((i) => i.id !== id));
     toast.success("Item dihapus dari keranjang");
+    refreshCart();
   };
 
   const getItemPrice = (item: CartItem) => {

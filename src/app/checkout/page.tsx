@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { CartItem } from "@/lib/types";
 import { placeOrder } from "./actions";
+import { useCart } from "@/components/cart-context";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -21,6 +22,7 @@ function formatPrice(price: number) {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { refreshCart } = useCart();
   const [isPending, startTransition] = useTransition();
   const [items, setItems] = useState<CartItem[]>([]);
   const [profile, setProfile] = useState<{
@@ -102,6 +104,7 @@ export default function CheckoutPage() {
         );
 
         toast.success("Pesanan berhasil dibuat!");
+        refreshCart();
         window.open(
           `https://wa.me/6281234567890?text=${waMessage}`,
           "_blank"

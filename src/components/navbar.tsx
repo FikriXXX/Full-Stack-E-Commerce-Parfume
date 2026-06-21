@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
+import { useCart } from "@/components/cart-context";
 
 const navLinks = [
   { href: "/", label: "Beranda" },
@@ -24,6 +25,7 @@ const navLinks = [
 
 export function Navbar() {
   const router = useRouter();
+  const { cartCount } = useCart();
   const [open, setOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -94,8 +96,13 @@ export function Navbar() {
             <Search className="h-4 w-4" />
           </Link>
           {/* Cart - always visible */}
-          <Link href="/cart" className="inline-flex items-center justify-center rounded-lg h-8 w-8 hover:bg-muted transition-colors">
+          <Link href="/cart" className="relative inline-flex items-center justify-center rounded-lg h-8 w-8 hover:bg-muted transition-colors">
             <ShoppingBag className="h-4 w-4" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground animate-in zoom-in duration-200">
+                {cartCount}
+              </span>
+            )}
           </Link>
           {/* User - always visible */}
           <Link href={accountHref} className="inline-flex items-center justify-center rounded-lg h-8 w-8 hover:bg-muted transition-colors">
@@ -142,8 +149,16 @@ export function Navbar() {
                     <Link href="/wishlist" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                       <Heart className="h-4 w-4" />Wishlist
                     </Link>
-                    <Link href="/cart" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-                      <ShoppingBag className="h-4 w-4" />Keranjang
+                    <Link href="/cart" onClick={() => setOpen(false)} className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+                      <div className="flex items-center gap-3">
+                        <ShoppingBag className="h-4 w-4" />
+                        <span>Keranjang</span>
+                      </div>
+                      {cartCount > 0 && (
+                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-bold text-accent-foreground animate-in zoom-in duration-200">
+                          {cartCount}
+                        </span>
+                      )}
                     </Link>
                     <Link href={accountHref} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
                       <User className="h-4 w-4" />{loggedIn ? "Akun Saya" : "Masuk / Daftar"}

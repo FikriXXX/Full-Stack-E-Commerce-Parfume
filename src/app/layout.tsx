@@ -4,6 +4,7 @@ import { Playfair_Display } from "next/font/google";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
+import { CartProvider } from "@/components/cart-context";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -50,10 +51,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <Toaster />
+          <CartProvider>
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <Toaster />
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>

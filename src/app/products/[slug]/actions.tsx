@@ -7,6 +7,7 @@ import { ShoppingBag, MessageCircle, Minus, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { Product } from "@/lib/types";
+import { useCart } from "@/components/cart-context";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -24,6 +25,7 @@ export function ProductActions({
   discountedPrice: number;
 }) {
   const router = useRouter();
+  const { refreshCart } = useCart();
   const [qty, setQty] = useState(1);
   const maxQty = Math.max(1, product.stock);
 
@@ -46,7 +48,8 @@ export function ProductActions({
     if (error) {
       toast.error("Gagal menambahkan ke keranjang");
     } else {
-      toast.success("Ditambahkan ke keranjang");
+      toast.success("Berhasil masuk ke keranjang");
+      refreshCart();
     }
   };
 
